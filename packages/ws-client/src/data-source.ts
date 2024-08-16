@@ -64,7 +64,23 @@ export function createWSModelSource(wsUrl: string, options?: Options): WebSocket
   })
 
   rws.onmessage = (eventData) => {
-    const event = JSON.parse(eventData.data) as ServerWebsocketMessage
+    let event: ServerWebsocketMessage;
+    try {
+      let dataToParse = eventData.data;
+      if (typeof dataToParse === 'object' && dataToParse._data) {
+        const uint8Array = new Uint8Array(dataToParse._data);
+        dataToParse = new TextDecoder().decode(uint8Array);
+      }
+      if (!dataToParse) {
+        console.warn('Received empty data');
+        event = {} as ServerWebsocketMessage;
+      } else {
+        event = JSON.parse(dataToParse) as ServerWebsocketMessage;
+      }
+    } catch (error) {
+      console.error('Failed to parse JSON:', error);
+      return; 
+    }
     switch (event['$']) {
       case 'up': {
         cache.set(event.key, event.val)
